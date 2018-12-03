@@ -1,27 +1,29 @@
 <template>
   <div class="casino container">
     <h1>Bienvenido</h1>
-    <div v-if="start">
-    <p> Nombre del perrito: {{name}}</p>
-    <p> Peso: {{weight}}</p>
-    <p> Altura: {{height}}</p>
-    <p> Fecha Antirabica: {{dateRabies}}</p>
-    <p> Fecha Antiparasitario: {{dateParasite}}</p>
+    <div v-if="started">
+    <p v-if="!editing"> Nombre del perrito: {{name}}</p>
+    <p v-if="!editing"> Peso: {{weight}}</p>
+    <p v-if="!editing"> Altura: {{height}}</p>
+    <p v-if="!editing"> Fecha Antirabica: {{dateRabies}}</p>
+    <p v-if="!editing"> Fecha Antiparasitario: {{dateParasite}}</p>
 
-    <p> Nombre del perrito: <input v-model="nameInput" placeholder=""> </p>
-    <p> Peso: <input v-model="weightInput" placeholder=""> </p>
-    <p> Altura: <input  v-model="heightInput"    placeholder=""></p>
-    <p> Fecha Antirabica: <input v-model="dateRabiesInput" type="date" placeholder="" > </p>
-    <p> Fecha Antiparasitario: <input  v-model="dateParasiteInput" type="date" placeholder=""> </p>
-    <input type="submit" value="Refrescar" v-on:click="clickRefresh" placeholder="">
-    <input type="submit" value="Cambiar" v-on:click="clickEnter" placeholder="">
+    <p v-if="editing"> Nombre del perrito: <input v-model="nameInput"  v-bind:placeholder="name"> </p>
+    <p v-if="editing"> Peso: <input v-model="weightInput" v-bind:placeholder="weight"> </p>
+    <p v-if="editing"> Altura: <input  v-model="heightInput"    v-bind:placeholder="height"></p>
+    <p v-if="editing"> Fecha Antirabica: <input v-model="dateRabiesInput" type="date" > </p>
+    <p v-if="editing"> Fecha Antiparasitario: <input  v-model="dateParasiteInput" type="date"> </p>
+    <input type="submit"  value="Refrescar" v-on:click="clickRefresh" placeholder="">
+    <input type="submit" v-if="editing" value="Guardar" v-on:click="clickEnter" placeholder="">
+      <input type="submit" v-if="!editing" value="Editar" v-on:click="clickEdit" placeholder="">
     </div>
-    <div v-if="!start">
+    <div v-if="!started">
       <input type="submit" value="Ingresar" v-on:click="clickRefresh" placeholder="">
     </div>
 
   </div>
 </template>
+<!--https://itnext.io/create-your-first-ethereum-dapp-with-web3-and-vue-js-part-3-dc4f82fba4b4-->
 
 <script>
 
@@ -41,6 +43,7 @@ function getRabicDate (store, data) {
       console.log(err)
     } else {
       data.dateRabies = String(result[1].c[0]) + '/' + String(result[0].c[0]) + '/' + String(result[2].c[0])
+      data.dateParasiteInput = new Date(data.dateRabies)
     }
   })
 }
@@ -67,7 +70,7 @@ function setWeight (store, data, weight) {
 function setHeight (store, data, height) {
   var contract = store.state.contractInstance()
   var buyer = store.state.web3.coinbase
-  contract.setWeight(height, {from: buyer}, function (err, result) {
+  contract.setHeight(height, {from: buyer}, function (err, result) {
     console.log(err)
     console.log(result)
     data.height = height
@@ -84,38 +87,42 @@ function setName (store, data, name) {
       console.log(err)
     } else {
       console.log(result)
-      data.name = hex2a(nameHexa)
+      data.name = name
       data.nameInput = ''
     }
   })
 }
 function setRabiesDate (store, data, rabiesDate) {
-  console.log(rabiesDate)
   var date = new Date(Date.parse(rabiesDate))
-  console.log(date)
-  console.log(date.getDate() + 1, date.getMonth() + 1, date.getFullYear())
   var contract = store.state.contractInstance()
   var buyer = store.state.web3.coinbase
   contract.setDateAntiRabies(date.getDate() + 1, date.getMonth() + 1, date.getFullYear(), {from: buyer}, function (err, result) {
-    console.log(err)
-    console.log(result)
-    data.dateRabies = String(date.getMonth() + 1) + '/' + String(date.getDate() + 1) + '/' + String(date.getFullYear() + 1)
-    data.dateRabiesInput = ''
+    if (err) {
+      console.log(err)
+    } else {
+      console.log(result)
+      data.dateRabies = String(date.getMonth() + 1) + '/' + String(date.getDate() + 1) + '/' + String(date.getFullYear() + 1)
+      data.dateRabiesInput = ''
+    }
   })
 }
 function setParasiteDate (store, data, parasiteDate) {
-  // var contract = store.state.contractInstance()
-  // var buyer = store.state.web3.coinbase
-  console.log(parasiteDate)
-  data.dateParasiteInput = ''
+  var date = new Date(Date.parse(parasiteDate))
+  var contract = store.state.contractInstance()
+  var buyer = store.state.web3.coinbase
+  contract.setDateParasitic(date.getDate() + 1, date.getMonth() + 1, date.getFullYear(), {from: buyer}, function (err, result) {
+    if (err) {
+      console.log(err)
+    } else {
+      console.log(result)
+      data.dateParasite = String(date.getMonth() + 1) + '/' + String(date.getDate() + 1) + '/' + String(date.getFullYear() + 1)
+      data.dateParasiteInput = ''
+    }
+  })
 }
 
 function hex2a (hexx) {
-  console.log('Start hex2a')
-  console.log(hexx)
   hexx = hexx.replace(/^0x+/, '')
-  console.log(hexx)
-  console.log('End hex2a')
   var hex = hexx.toString()
   var str = ''
   for (var i = 0; (i < hex.length && hex.substr(i, 2) !== '00'); i += 2) { str += String.fromCharCode(parseInt(hex.substr(i, 2), 16)) }
@@ -158,25 +165,30 @@ export default {
       nameInput: '',
       dateRabiesInput: '',
       dateParasiteInput: '',
-      start: false
+      started: false,
+      editing: false
     }
   },
   beforeCreate () {
   },
 
   methods: {
+    clickEdit (event) {
+      this.editing = true
+    },
     clickRefresh (event) {
       getWeightAndHeight(this.$store, this)
       getRabicDate(this.$store, this)
       getParasiteDate(this.$store, this)
       getName(this.$store, this)
-      this.start = true
+      this.started = true
+      this.editing = false
     },
     clickEnter (event) {
       if (this.weightInput !== '') {
         setWeight(this.$store, this, this.weightInput)
       }
-      if (this.weightInput !== '') {
+      if (this.heightInput !== '') {
         setHeight(this.$store, this, this.heightInput)
       }
       if (this.nameInput !== '') {
@@ -188,6 +200,7 @@ export default {
       if (this.dateParasiteInput !== '') {
         setParasiteDate(this.$store, this, this.dateParasiteInput)
       }
+      this.editing = false
     }
   },
   mounted () {
